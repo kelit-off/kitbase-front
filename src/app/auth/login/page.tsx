@@ -16,6 +16,8 @@ export default function Login() {
     const canResetPassword = true;
     const canRegister = true;
 
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
     // Optional: detect prefers-color-scheme
     useEffect(() => {
         const prefersDark = window.matchMedia(
@@ -194,7 +196,7 @@ export default function Login() {
                         type="button"
                         className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() =>
-                            (window.location.href = "/auth/redirect/google")
+                            (window.location.href = `${API_URL}/auth/google`)
                         }
                     >
                         Continue with Google
@@ -203,7 +205,7 @@ export default function Login() {
                         type="button"
                         className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() =>
-                            (window.location.href = "/auth/redirect/github")
+                            (window.location.href = `${API_URL}/auth/github`)
                         }
                     >
                         Continue with GitHub

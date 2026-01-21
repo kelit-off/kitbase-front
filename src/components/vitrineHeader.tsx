@@ -1,6 +1,7 @@
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { Button } from "./ui/button";
 
 type MenuItem = {
     title: string;
@@ -103,19 +104,19 @@ export default function VitrineHeader() {
                                 href="/dashboard"
                                 className="font-semibold mr-3"
                             >
-                                <button variant={"success"} size={"sm"}>
+                                <Button variant={"success"} size={"sm"}>
                                     Dashboard
-                                </button>
+                                </Button>
                             </Link>
                             {/* <NavUser /> */}
                         </>
                     ) : (
                         <>
-                            <Link href="/login" className="font-semibold">
+                            <Link href="/auth/login" className="font-semibold">
                                 Login
                             </Link>
                             <Link
-                                href="/register"
+                                href="/auth/register"
                                 className="ml-4 font-semibold"
                             >
                                 Start your project

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import QueryProvider from "@/libs/QueryProvider";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -19,29 +20,34 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
     children,
-}: Readonly<{
+}: {
     children: React.ReactNode;
-}>) {
+}) {
     return (
-        <html lang="en">
+        <html lang="en" suppressHydrationWarning>
+            <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+(function () {
+  const appearance = 'dark'; // 'light' | 'dark' | 'system'
+  const root = document.documentElement;
+
+  const isDark =
+    appearance === 'dark' ||
+    (appearance === 'system' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+
+  root.classList.toggle('dark', isDark);
+})();
+            `,
+                    }}
+                />
+            </head>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
-                {children}
-                {/* <div className="fixed bottom-6 right-6 bg-[#0b0b0b] border border-gray-800 rounded-xl p-4 text-xs text-gray-400 max-w-xs z-50">
-                    <p className="mb-3">
-                        We use cookies to collect data and improve our services.
-                        <span className="underline ml-1">Learn more</span>
-                    </p>
-                    <div className="flex gap-2">
-                        <button className="px-3 py-1 bg-white text-black rounded">
-                            Accept
-                        </button>
-                        <button className="px-3 py-1 border border-gray-700 rounded">
-                            Opt out
-                        </button>
-                    </div>
-                </div> */}
+                <QueryProvider>{children}</QueryProvider>
             </body>
         </html>
     );

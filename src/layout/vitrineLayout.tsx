@@ -1,6 +1,6 @@
 import VitrineHeader from "@/components/vitrineHeader";
 
-export default function VitrineLayout({children}): React.ReactNode {
+export default function VitrineLayout({ children }: { children: React.ReactNode }) {
     return (
         <>
             <VitrineHeader />
