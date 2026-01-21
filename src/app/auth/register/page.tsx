@@ -13,6 +13,9 @@ export default function Register() {
     const [status, setStatus] = useState("");
     const [darkMode, setDarkMode] = useState(false);
 
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+
     // Détection dark mode
     useEffect(() => {
         const prefersDark = window.matchMedia(
@@ -175,11 +178,10 @@ export default function Register() {
                 <button
                     type="submit"
                     disabled={processing}
-                    className={`mt-2 w-full py-2 px-4 rounded text-white ${
-                        processing
+                    className={`mt-2 w-full py-2 px-4 rounded text-white ${processing
                             ? "bg-gray-400"
                             : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                    }`}
+                        }`}
                 >
                     {processing ? "Creating account..." : "Create account"}
                 </button>
@@ -213,7 +215,7 @@ export default function Register() {
                         type="button"
                         className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() =>
-                            (window.location.href = "/auth/redirect/google")
+                            (window.location.href = `${API_URL}/auth/google`)
                         }
                     >
                         Continue with Google
@@ -222,7 +224,7 @@ export default function Register() {
                         type="button"
                         className="w-full py-2 px-4 border border-gray-300 dark:border-gray-600 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                         onClick={() =>
-                            (window.location.href = "/auth/redirect/github")
+                            (window.location.href = `${API_URL}/auth/github`)
                         }
                     >
                         Continue with GitHub
