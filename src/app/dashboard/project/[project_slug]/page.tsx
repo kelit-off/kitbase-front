@@ -58,6 +58,7 @@ export default function ProjectDahsboardPage() {
         totalQueries: number;
         activeConnections: number;
         databaseSizeBytes: number;
+        recentQuery: []
     } | null>(null);
 
     useEffect(() => {
@@ -301,6 +302,20 @@ export default function ProjectDahsboardPage() {
                         <CardTitle>Slow Queries</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
+                        {metrics?.recentQuery && metrics.recentQuery.length > 0 ? (
+                            <>
+                                {metrics.recentQuery.map((query, index) => (
+                                    <SlowQueryRow
+                                        key={`${index}`}
+                                        query={query}
+                                    />
+                                ))}
+                            </>
+                        ) : (
+                            <div className="text-center text-muted-foreground text-sm py-4">
+                                Aucune requête récente disponible
+                            </div>
+                        )}
                         <SlowQueryRow
                             query="SELECT name FROM pg_timezone_names"
                             duration="0.15s"
@@ -374,13 +389,17 @@ function HealthRow({ label, value }: { label: string; value: string }) {
     );
 }
 
-function SlowQueryRow({ query, duration, calls }: { query: string; duration: string; calls: string }) {
+function SlowQueryRow({ query, duration, calls }: { query: string; duration?: string; calls?: string }) {
     return (
         <div className="flex items-center justify-between text-sm">
             <span className="font-mono text-neutral-200 truncate pr-4">{query}</span>
-            <span className="text-neutral-400">
-                {duration} · {calls} calls
-            </span>
+            {(duration || calls) && (
+                <span className="text-neutral-400">
+                    {duration && <>{duration}</>}
+                    {duration && calls && <> · </>}
+                    {calls && <>{calls} calls</>}
+                </span>
+            )}
         </div>
     );
 }
