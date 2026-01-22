@@ -54,13 +54,19 @@ export default function ProjectDahsboardPage() {
     const { data, isLoading } = useProject({ projectSlug, teamSlug } as any);
     const project = (Array.isArray(data) ? data[0] : data) as ProjectType | undefined;
 
-    const [metrics, setMetrics] = useState<any>(null);
+    const [metrics, setMetrics] = useState<{
+        totalQueries: number;
+        activeConnections: number;
+        databaseSizeBytes: number;
+    } | null>(null);
 
     useEffect(() => {
         const fetchMetrics = async () => {
+            if (!projectSlug) return;
+
             try {
-                const response = await api().get("/monitoring/metrics/json");
-                setMetrics(response.data);
+                const response = await api().get(`/monitoring/metrics/project/${projectSlug}`);
+                setMetrics(response.data.summary);
             } catch (err) {
                 console.error("Erreur lors du chargement des métriques", err);
             }
@@ -69,7 +75,7 @@ export default function ProjectDahsboardPage() {
         fetchMetrics();
         const interval = setInterval(fetchMetrics, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [projectSlug]);
 
     if (isLoading) {
         return (
@@ -147,9 +153,9 @@ export default function ProjectDahsboardPage() {
                 />
                 <StatCard
                     icon={<Activity className="w-5 h-5 text-emerald-400" />}
-                    title="Requêtes / jour"
+                    title="Requêtes"
                     value={metrics?.totalQueries?.toLocaleString() ?? "—"}
-                    hint="Données de monitoring"
+                    hint={`${metrics?.activeConnections ?? 0} connexions actives`}
                 />
                 <StatCard
                     icon={<ShieldCheck className="w-5 h-5 text-purple-400" />}
