@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProject } from "@/hooks/useProject";
 import DashboardLayout from "@/layout/dashboardLayout";
+import api from "@/libs/api";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
     Database,
     HardDrive,
@@ -51,6 +53,23 @@ export default function ProjectDahsboardPage() {
 
     const { data, isLoading } = useProject({ projectSlug, teamSlug } as any);
     const project = (Array.isArray(data) ? data[0] : data) as ProjectType | undefined;
+
+    const [metrics, setMetrics] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchMetrics = async () => {
+            try {
+                const response = await api().get("/monitoring/metrics/json");
+                setMetrics(response.data);
+            } catch (err) {
+                console.error("Erreur lors du chargement des métriques", err);
+            }
+        };
+
+        fetchMetrics();
+        const interval = setInterval(fetchMetrics, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     if (isLoading) {
         return (
@@ -129,7 +148,7 @@ export default function ProjectDahsboardPage() {
                 <StatCard
                     icon={<Activity className="w-5 h-5 text-emerald-400" />}
                     title="Requêtes / jour"
-                    value="45.2K"
+                    value={metrics?.totalQueries?.toLocaleString() ?? "—"}
                     hint="Données de monitoring"
                 />
                 <StatCard

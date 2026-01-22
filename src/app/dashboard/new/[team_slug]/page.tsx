@@ -25,13 +25,20 @@ export default function createProjectPage() {
         region: "eu"
     })
 
+    const [error, setError] = useState<string | null>(null)
+
     const submitForm = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
+        setError(null);
 
-        const response = await api().post("/projects", formData);
-        console.log(response)
-        if (response.status === 201) {
-            window.location.href = "/dashboard/project/" + response.data.slug
+        try {
+            const response = await api().post("/projects", formData);
+            if (response.status === 201) {
+                window.location.href = "/dashboard/project/" + response.data.slug
+            }
+        } catch (err: any) {
+            const message = err.response?.data?.message || "Une erreur est survenue";
+            setError(message);
         }
     }
 
@@ -52,6 +59,13 @@ export default function createProjectPage() {
                             An API will be set up so you can easily interact with your new database.
                         </p>
                     </div>
+
+                    {/* Error */}
+                    {error && (
+                        <div className="mx-6 mt-6 rounded-md border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                            {error}
+                        </div>
+                    )}
 
                     {/* Form */}
                     <div className="space-y-6 px-6 py-6">
