@@ -32,10 +32,12 @@ interface NavItem {
 
 
 const navigation: NavItem[] = [
+	// Navigation Organisation
 	{
 		name: "Vue d'ensemble",
 		href: ({ teamSlug }) => (teamSlug ? `/dashboard/org/${teamSlug}` : "/dashboard/"),
-		icon: LayoutDashboard
+		icon: LayoutDashboard,
+		requiresTeam: true,
 	},
 	{
 		name: "Team",
@@ -60,7 +62,26 @@ const navigation: NavItem[] = [
 		href: ({ teamSlug }) => (teamSlug ? `/dashboard/org/${teamSlug}/general` : "/dashboard/"),
 		icon: Settings,
 		requiresTeam: true,
-	}
+	},
+	// Navigation Projet
+	{
+		name: "Vue d'ensemble",
+		href: ({ projectSlug }) => `/dashboard/project/${projectSlug}`,
+		icon: FolderOpen,
+		requiresProject: true,
+	},
+	{
+		name: "Tables",
+		href: ({ projectSlug }) => `/dashboard/project/${projectSlug}/database/tables`,
+		icon: Table,
+		requiresProject: true,
+	},
+	{
+		name: "SQL Editor",
+		href: ({ projectSlug }) => `/dashboard/project/${projectSlug}/database/sql`,
+		icon: Code,
+		requiresProject: true,
+	},
 ];
 
 

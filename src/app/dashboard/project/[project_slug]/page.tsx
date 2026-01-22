@@ -316,12 +316,6 @@ export default function ProjectDahsboardPage() {
                                 Aucune requête récente disponible
                             </div>
                         )}
-                        <SlowQueryRow
-                            query="SELECT name FROM pg_timezone_names"
-                            duration="0.15s"
-                            calls="61"
-                        />
-                        <SlowQueryRow query="SELECT * FROM users WHERE active = true" duration="0.09s" calls="34" />
                     </CardContent>
                 </Card>
             </div>
