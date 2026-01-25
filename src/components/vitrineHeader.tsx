@@ -1,6 +1,9 @@
+"use client";
+
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 
 type MenuItem = {
@@ -31,8 +34,19 @@ const menuItems: MenuItem[] = [
 ];
 
 export default function VitrineHeader() {
-    const user = null
-    // const { auth } = usePage<SharedData>().props;
+    const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+    useEffect(() => {
+        const getCookie = (name: string) => {
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop()?.split(";").shift();
+            return null;
+        };
+
+        const token = getCookie("access_token");
+        setIsLoggedIn(!!token);
+    }, []);
     return (
         <header className="border-b shadow-md px-72 py-4 w-full max-w-screen">
             <nav className="flex items-center justify-between w-full">
@@ -98,7 +112,7 @@ export default function VitrineHeader() {
                     </div>
                 </div>
                 <div className="flex items-center">
-                    {user ? (
+                    {isLoggedIn ? (
                         <>
                             <Link
                                 href="/dashboard"
