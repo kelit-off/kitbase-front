@@ -18,14 +18,13 @@ export default function TeamDashboardPage() {
     const { data: projects } = useProjects(teamSlug ?? "");
     return (
         <DashboardLayout>
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:px-96">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 md:p-8 max-w-6xl mx-auto w-full">
                 <h1 className="text-xl">Vos projets</h1>
-                <div className='flex flex-row justify-between'>
-                    {/* Petite bar de recherche et bouton pour crée nouvelle orga */}
+                <div className="flex flex-row justify-between">
                     <div className="flex items-center space-x-2">
                         <input
                             type="text"
-                            placeholder="Rechercher une organisation..."
+                            placeholder="Rechercher un projet..."
                             className="px-4 py-2 border border-sidebar-border/70 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                     </div>
@@ -37,29 +36,31 @@ export default function TeamDashboardPage() {
                         </Link>
                     </div>
                 </div>
-                <div>
-                    {/* Liste Card des projets */}
-                    {projects && projects.length > 0 ? (
-                        projects.map((project: any) => (
-                            <Link href={"/dashboard/project/" + project.slug} key={project.slug}>
-                                <Card key={project.slug} className="!gap-0 mb-4 p-4 md:min-w-68 md:max-w-68 cursor-pointer hover:bg-muted/50 transition">
-                                    <h3 className="text-lg font-semibold mb-0">{project.name}</h3>
-                                    <p>{project.region}</p>
-                                    {project.compute_instances?.map((instance: any) => (
-                                        <Badge key={instance?.id ?? instance?.compute_plan?.name}>
-                                            {instance.compute_plan.name}
-                                        </Badge>
-                                    ))}
-                                    {/* idée indique le type de serveur et sa localité */}
+                {projects && projects.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {projects.map((project: any) => (
+                            <Link href={"/dashboard/project/" + project.slug} key={project.slug} className="block">
+                                <Card className="p-4 h-full cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all">
+                                    <h3 className="text-lg font-semibold">{project.name}</h3>
+                                    <p className="text-muted-foreground text-sm">{project.region}</p>
+                                    {project.compute_instances?.length > 0 && (
+                                        <div className="flex flex-wrap gap-1 mt-2">
+                                            {project.compute_instances.map((instance: any) => (
+                                                <Badge key={instance?.id ?? instance?.compute_plan?.name} variant="secondary">
+                                                    {instance.compute_plan.name}
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                    )}
                                 </Card>
                             </Link>
-                        ))
-                    ) : (
-                        <p className="text-muted-foreground text-lg text-center w-full mt-16">
-                            Aucune projet disponible.
-                        </p>
-                    )}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground text-lg text-center w-full mt-16">
+                        Aucun projet disponible.
+                    </p>
+                )}
             </div>
         </DashboardLayout>
     )

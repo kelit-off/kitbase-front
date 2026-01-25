@@ -11,7 +11,7 @@ export default function DashboardPage() {
 
     return (
         <DashboardLayout>
-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4 md:px-96">
+            <div className="flex h-full flex-1 flex-col gap-4 rounded-xl p-4 md:p-8 max-w-6xl mx-auto w-full">
                 <h1 className='text-xl'>Vos organisations</h1>
                 <div className='flex flex-row justify-between'>
                     {/* Petite bar de recherche et bouton pour crée nouvelle orga */}
@@ -30,32 +30,32 @@ export default function DashboardPage() {
                         </Link>
                     </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                    {teams && teams.length > 0 ? (
-                        teams.map((team: any) => (
-                            <Link key={team.id} href={`/dashboard/org/${team.slug}`}>
-                                <Card className="mb-4 p-4 md:min-w-68 md:max-w-68 cursor-pointer hover:bg-muted/50 transition">
+                {teams && teams.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {teams.map((team: any) => (
+                            <Link key={team.id} href={`/dashboard/org/${team.slug}`} className="block">
+                                <Card className="p-4 h-full cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all">
                                     <h3 className="text-lg font-semibold">{team.name}</h3>
-                                    <div className="flex flex-row items-center gap-2 text-muted-200 text-sm">
-                                        <span>
+                                    <div className="flex flex-row items-center gap-2 text-muted-foreground text-sm mt-1">
+                                        <span className="bg-primary/10 text-primary px-2 py-0.5 rounded text-xs font-medium">
                                             {team.pricingPlan.name.charAt(0).toUpperCase() +
-                                                team.pricingPlan.name.slice(1)}{" "}
-                                            Plan
+                                                team.pricingPlan.name.slice(1)}
                                         </span>
-                                        <p>
+                                        <span>•</span>
+                                        <span>
                                             {team._count.projects} projet
                                             {team._count.projects > 1 ? "s" : ""}
-                                        </p>
+                                        </span>
                                     </div>
                                 </Card>
                             </Link>
-                        ))
-                    ) : (
-                        <p className="text-muted-foreground text-lg text-center w-full mt-16">
-                            Aucune organisation disponible.
-                        </p>
-                    )}
-                </div>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-muted-foreground text-lg text-center w-full mt-16">
+                        Aucune organisation disponible.
+                    </p>
+                )}
 
             </div>
         </DashboardLayout>
