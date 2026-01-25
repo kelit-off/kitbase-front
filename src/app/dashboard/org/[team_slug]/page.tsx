@@ -43,9 +43,9 @@ export default function TeamDashboardPage() {
                                 <Card className="p-4 h-full cursor-pointer hover:bg-muted/50 hover:border-primary/50 transition-all">
                                     <h3 className="text-lg font-semibold">{project.name}</h3>
                                     <p className="text-muted-foreground text-sm">{project.region}</p>
-                                    {project.compute_instances?.length > 0 && (
+                                    {project.computerInstances?.length > 0 && (
                                         <div className="flex flex-wrap gap-1 mt-2">
-                                            {project.compute_instances.map((instance: any) => (
+                                            {project.computerInstances.map((instance: any) => (
                                                 <Badge key={instance?.id ?? instance?.compute_plan?.name} variant="secondary">
                                                     {instance.compute_plan.name}
                                                 </Badge>
