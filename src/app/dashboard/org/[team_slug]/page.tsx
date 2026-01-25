@@ -47,7 +47,7 @@ export default function TeamDashboardPage() {
                                         <div className="flex flex-wrap gap-1 mt-2">
                                             {project.computerInstances.map((instance: any) => (
                                                 <Badge key={instance?.id ?? instance?.compute_plan?.name} variant="secondary">
-                                                    {instance.compute_plan.name}
+                                                    {instance.computerPlan.name}
                                                 </Badge>
                                             ))}
                                         </div>
