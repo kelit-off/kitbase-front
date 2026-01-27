@@ -59,7 +59,7 @@ const navigation: NavItem[] = [
 	},
 	{
 		name: "Organizations settings",
-		href: ({ teamSlug }) => (teamSlug ? `/dashboard/org/${teamSlug}/general` : "/dashboard/"),
+		href: ({ teamSlug }) => (teamSlug ? `/dashboard/org/${teamSlug}/settings/general` : "/dashboard/"),
 		icon: Settings,
 		requiresTeam: true,
 	},
