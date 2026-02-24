@@ -1,7 +1,7 @@
 "use client";
 
 import AuthLayout from "@/layout/authLayout";
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authApi } from "@/libs/api/auth.api";
 
 export default function ResetPasswordCode() {
+    return (
+        <Suspense>
+            <ResetPasswordCodeContent />
+        </Suspense>
+    );
+}
+
+function ResetPasswordCodeContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [token, setToken] = useState(searchParams.get("token") || "");

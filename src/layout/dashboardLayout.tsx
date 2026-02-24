@@ -126,6 +126,9 @@ export default function DashboardLayout({
 							>
 								Dashboard
 							</Link>
+							<span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-wide">
+								Bêta
+							</span>
 
 							{/* {showSidebar && (
 								<button

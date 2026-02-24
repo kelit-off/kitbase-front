@@ -51,7 +51,12 @@ export default function VitrineHeader() {
         <header className="border-b shadow-md px-72 py-4 w-full max-w-screen">
             <nav className="flex items-center justify-between w-full">
                 <div className="flex items-center gap-16">
-                    <div className="font-bold text-lg">KitBase</div>
+                    <div className="flex items-center gap-2">
+                        <div className="font-bold text-lg">KitBase</div>
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30 uppercase tracking-wide">
+                            Bêta
+                        </span>
+                    </div>
 
                     <div className="flex gap-6">
                         {menuItems.map((item) => (

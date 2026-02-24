@@ -10,7 +10,7 @@ import { useParams } from "next/navigation";
 import { X } from "lucide-react";
 
 export default function DashboardTeamMembersPage({ }) {
-    const { team_slug } = useParams();
+    const { team_slug } = useParams() as { team_slug: string };
 
     const { data: team, refetch } = useTeam(team_slug as string);
     // TODO: brancher le vrai rôle depuis l'API (ex: team.current_user_role)
