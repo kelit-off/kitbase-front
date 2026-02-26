@@ -16,21 +16,21 @@ type MenuItem = {
 
 const menuItems: MenuItem[] = [
     {
-        title: "Product",
+        title: "Produit",
         children: [
             {
-                title: "Database",
-                description: "Fully portable Postgres database",
+                title: "Base de données",
+                description: "Base de données Postgres entièrement portable",
                 href: "/database",
             },
             // { title: 'Authentication', description: 'User Management out of the box', href: '/auth' },
             // { title: 'Storage', description: 'Serverless storage for any media', href: '/storage' },
         ],
     },
-    {
-        title: "Docs",
-        href: "/docs",
-    },
+    // {
+    //     title: "Docs",
+    //     href: "/docs",
+    // },
 ];
 
 export default function VitrineHeader() {
@@ -132,13 +132,13 @@ export default function VitrineHeader() {
                     ) : (
                         <>
                             <Link href="/auth/login" className="font-semibold">
-                                Login
+                                Connexion
                             </Link>
                             <Link
                                 href="/auth/register"
                                 className="ml-4 font-semibold"
                             >
-                                Start your project
+                                Démarrer votre projet
                             </Link>
                         </>
                     )}
