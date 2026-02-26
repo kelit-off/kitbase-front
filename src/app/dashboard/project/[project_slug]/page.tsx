@@ -144,7 +144,7 @@ export default function ProjectDahsboardPage() {
     const connUser = project.username ?? "postgres";
     const connPassword = "••••••••••••";
     const connPasswordReal = "[mot de passe du projet]";
-    const connString = `postgresql://${connUser}:${connPasswordReal}@${connHost}:${connPort}/${connDb}`;
+    const connString = `postgresql://${connUser}:${connPasswordReal}@${connHost}:${connPort}?sslmode=require`;
 
     return (
         <DashboardLayout className="px-8 py-6 space-y-8">
