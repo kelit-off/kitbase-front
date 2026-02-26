@@ -175,11 +175,11 @@ export default function SqlEditorPage() {
                             className="bg-emerald-600 hover:bg-emerald-700"
                         >
                             <Play className="w-4 h-4 mr-2" />
-                            {executing ? "Exécution..." : "Run"}
+                            {executing ? "Exécution..." : "Exécuter"}
                         </Button>
                         <Button onClick={saveCurrent} size="sm" variant="outline">
                             <Save className="w-4 h-4 mr-2" />
-                            Save
+                            Sauvegarder
                         </Button>
                         <Button onClick={copySql} size="sm" variant="outline">
                             {copied ? (
@@ -187,7 +187,7 @@ export default function SqlEditorPage() {
                             ) : (
                                 <Copy className="w-4 h-4 mr-2" />
                             )}
-                            Copy
+                            Copier
                         </Button>
                     </div>
                 </div>
@@ -280,7 +280,7 @@ export default function SqlEditorPage() {
                     <div className="lg:col-span-9 flex flex-col gap-6">
                         <Card className="border-neutral-800 bg-[#0f0f0f] overflow-hidden">
                             <CardHeader className="flex flex-row items-center justify-between">
-                                <CardTitle className="text-lg">Query</CardTitle>
+                                <CardTitle className="text-lg">Requête</CardTitle>
                                 <div className="flex items-center gap-2">
                                     <Badge variant="secondary">PostgreSQL</Badge>
                                     <Badge className="bg-indigo-600 text-white">
@@ -309,10 +309,10 @@ export default function SqlEditorPage() {
                         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
                             <Card className="xl:col-span-8 border-neutral-800 bg-[#0f0f0f] overflow-hidden">
                                 <CardHeader className="flex flex-row items-center justify-between">
-                                    <CardTitle className="text-lg">Results</CardTitle>
+                                    <CardTitle className="text-lg">Résultats</CardTitle>
                                     {result ? (
                                         <span className="text-xs text-neutral-500">
-                                            {result.rows.length} row(s) •{" "}
+                                            {result.rows.length} ligne(s) •{" "}
                                             {result.elapsedMs}ms
                                         </span>
                                     ) : (
@@ -370,7 +370,7 @@ export default function SqlEditorPage() {
                             <Card className="xl:col-span-4 border-neutral-800 bg-[#0f0f0f]">
                                 <CardHeader className="flex flex-row items-center justify-between">
                                     <CardTitle className="text-lg">
-                                        Saved / History
+                                        Sauvegardés / Historique
                                     </CardTitle>
                                     <Badge variant="secondary">
                                         {savedQueries.length + history.length}
@@ -379,7 +379,7 @@ export default function SqlEditorPage() {
                                 <CardContent className="space-y-4">
                                     <div className="space-y-2">
                                         <div className="text-xs font-medium text-neutral-400">
-                                            Saved queries
+                                            Requêtes sauvegardées
                                         </div>
                                         {savedQueries.slice(0, 6).map((q) => (
                                             <button
@@ -400,7 +400,7 @@ export default function SqlEditorPage() {
                                     <div className="space-y-2">
                                         <div className="flex items-center justify-between">
                                             <div className="text-xs font-medium text-neutral-400">
-                                                History
+                                                Historique
                                             </div>
                                             <History className="w-4 h-4 text-neutral-500" />
                                         </div>

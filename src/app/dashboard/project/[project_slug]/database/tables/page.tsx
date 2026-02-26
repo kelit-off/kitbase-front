@@ -123,7 +123,7 @@ export default function TableManagerPage() {
                 {/* Header */}
                 <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div className="space-y-1">
-                        <h1 className="text-2xl font-semibold">Table Editor</h1>
+                        <h1 className="text-2xl font-semibold">Éditeur de tables</h1>
                         <p className="text-sm text-neutral-400">
                             Projet:{" "}
                             <span className="text-neutral-200 font-medium">
@@ -134,11 +134,11 @@ export default function TableManagerPage() {
                     <div className="flex flex-wrap gap-2">
                         <Button size="sm" variant="outline" onClick={() => setShowCreate(true)}>
                             <Plus className="w-4 h-4 mr-2" />
-                            New table
+                            Nouvelle table
                         </Button>
                         <Button size="sm" onClick={() => setShowInsert(true)}>
                             <Plus className="w-4 h-4 mr-2" />
-                            Insert row
+                            Insérer une ligne
                         </Button>
                     </div>
                 </div>
@@ -181,12 +181,12 @@ export default function TableManagerPage() {
                                                     </span>
                                                     {active && (
                                                         <Badge className="bg-indigo-600 text-white">
-                                                            Selected
+                                                            Sélectionné
                                                         </Badge>
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-neutral-500">
-                                                    {t.rows.toLocaleString()} rows • {t.size}
+                                                    {t.rows.toLocaleString()} lignes • {t.size}
                                                 </div>
                                             </div>
                                             <ChevronRight className="w-4 h-4 text-neutral-500 mt-1" />
@@ -222,15 +222,15 @@ export default function TableManagerPage() {
                                         ) : (
                                             <Copy className="w-4 h-4 mr-2" />
                                         )}
-                                        Copy DDL
+                                        Copier DDL
                                     </Button>
                                     <Button size="sm" variant="outline">
                                         <Pencil className="w-4 h-4 mr-2" />
-                                        Edit schema
+                                        Modifier le schéma
                                     </Button>
                                     <Button size="sm" variant="outline">
                                         <Filter className="w-4 h-4 mr-2" />
-                                        Filters
+                                        Filtres
                                     </Button>
                                     <Button
                                         size="sm"
@@ -238,7 +238,7 @@ export default function TableManagerPage() {
                                         className="text-red-400 hover:text-red-300"
                                     >
                                         <Trash2 className="w-4 h-4 mr-2" />
-                                        Drop
+                                        Supprimer
                                     </Button>
                                 </div>
                             </CardHeader>
@@ -248,7 +248,7 @@ export default function TableManagerPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-sm font-medium text-neutral-200">
                                             <Columns3 className="w-4 h-4 text-neutral-400" />
-                                            Columns
+                                            Colonnes
                                         </div>
                                         <Badge variant="secondary">
                                             {selected.columns.length}
@@ -260,13 +260,13 @@ export default function TableManagerPage() {
                                             <thead className="bg-[#111] border-b border-neutral-800">
                                                 <tr>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400">
-                                                        Name
+                                                        Nom
                                                     </th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400">
                                                         Type
                                                     </th>
                                                     <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400">
-                                                        Constraints
+                                                        Contraintes
                                                     </th>
                                                 </tr>
                                             </thead>
@@ -308,7 +308,7 @@ export default function TableManagerPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-2 text-sm font-medium text-neutral-200">
                                             <Rows3 className="w-4 h-4 text-neutral-400" />
-                                            Rows (preview)
+                                            Lignes (aperçu)
                                         </div>
                                         <Badge variant="secondary">{rows.length}</Badge>
                                     </div>
@@ -359,7 +359,7 @@ export default function TableManagerPage() {
                     <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-[#111]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
                             <div className="space-y-1">
-                                <div className="text-lg font-semibold">New table</div>
+                                <div className="text-lg font-semibold">Nouvelle table</div>
                                 <div className="text-sm text-neutral-400">
                                     Crée une table (UI seulement).
                                 </div>
@@ -388,9 +388,9 @@ export default function TableManagerPage() {
                         </div>
                         <div className="px-6 py-4 border-t border-neutral-800 flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setShowCreate(false)}>
-                                Cancel
+                                Annuler
                             </Button>
-                            <Button onClick={() => setShowCreate(false)}>Create</Button>
+                            <Button onClick={() => setShowCreate(false)}>Créer</Button>
                         </div>
                     </div>
                 </div>
@@ -402,7 +402,7 @@ export default function TableManagerPage() {
                     <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-[#111]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
                             <div className="space-y-1">
-                                <div className="text-lg font-semibold">Insert row</div>
+                                <div className="text-lg font-semibold">Insérer une ligne</div>
                                 <div className="text-sm text-neutral-400">
                                     Table:{" "}
                                     <span className="text-neutral-200 font-medium">{selected.name}</span>
@@ -422,9 +422,9 @@ export default function TableManagerPage() {
                         </div>
                         <div className="px-6 py-4 border-t border-neutral-800 flex justify-end gap-2">
                             <Button variant="outline" onClick={() => setShowInsert(false)}>
-                                Cancel
+                                Annuler
                             </Button>
-                            <Button onClick={() => setShowInsert(false)}>Insert</Button>
+                            <Button onClick={() => setShowInsert(false)}>Insérer</Button>
                         </div>
                     </div>
                 </div>

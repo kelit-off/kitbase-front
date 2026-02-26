@@ -18,10 +18,18 @@ import {
     Wrench,
     Table,
     PlugZap,
+    Copy,
+    Eye,
+    EyeOff,
+    CheckCircle2,
+    X,
 } from "lucide-react";
 
 type ProjectType = {
     name?: string;
+    host?: string;
+    port?: number;
+    username?: string;
     databases?: Array<{
         id?: string;
         name?: string;
@@ -61,6 +69,14 @@ export default function ProjectDahsboardPage() {
         recentQuery: []
     } | null>(null);
 
+    const [showConnect, setShowConnect] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [copiedField, setCopiedField] = useState<string | null>(null);
+    const [connectTab, setConnectTab] = useState<"string" | "frameworks" | "mobile" | "orm" | "apikeys" | "mcp">("string");
+    const [connectType, setConnectType] = useState<"URI" | "JDBC" | "env">("URI");
+    const [connectSource, setConnectSource] = useState<"direct" | "pooler">("direct");
+    const [showParams, setShowParams] = useState(false);
+
     useEffect(() => {
         const fetchMetrics = async () => {
             if (!projectSlug) return;
@@ -77,6 +93,16 @@ export default function ProjectDahsboardPage() {
         const interval = setInterval(fetchMetrics, 30000);
         return () => clearInterval(interval);
     }, [projectSlug]);
+
+    const copyToClipboard = async (text: string, field: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopiedField(field);
+            setTimeout(() => setCopiedField(null), 1500);
+        } catch {
+            // ignore
+        }
+    };
 
     if (isLoading) {
         return (
@@ -111,6 +137,15 @@ export default function ProjectDahsboardPage() {
     const databases = project.databases ?? [];
     const instances = project.computerInstances ?? [];
 
+    // Connection info from project
+    const connHost = project.host ?? `db-${projectSlug}.kitbase.io`;
+    const connPort = project.port ?? 5432;
+    const connDb = databases[0]?.name ?? projectSlug ?? "postgres";
+    const connUser = project.username ?? "postgres";
+    const connPassword = "••••••••••••";
+    const connPasswordReal = "[mot de passe du projet]";
+    const connString = `postgresql://${connUser}:${connPasswordReal}@${connHost}:${connPort}/${connDb}`;
+
     return (
         <DashboardLayout className="px-8 py-6 space-y-8">
             {/* Header */}
@@ -118,23 +153,22 @@ export default function ProjectDahsboardPage() {
                 <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-2xl font-semibold">{project.name}</h1>
 
-                    {instances.map((instance) => (
-                        <Badge key={instance.id} variant="secondary">
-                            {instance.name ?? "Instance"} · {instance.computerPlan.code.toUpperCase()}
-                        </Badge>
-                    ))}
+                    <Button onClick={() => setShowConnect(true)}>
+                        <PlugZap className="w-4 h-4 mr-2" />
+                        Connexion
+                    </Button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 text-sm text-neutral-400">
                     <span>
-                        Databases{" "}
+                        Bases de données{" "}
                         <strong className="text-white">{databases.length}</strong>
                     </span>
                     <span>
                         Instances{" "}
                         <strong className="text-white">{instances.length}</strong>
                     </span>
-                    <Badge className="bg-emerald-600 text-white">Healthy</Badge>
+                    <Badge className="bg-emerald-600 text-white">Opérationnel</Badge>
                 </div>
             </div>
 
@@ -148,7 +182,7 @@ export default function ProjectDahsboardPage() {
                 />
                 <StatCard
                     icon={<HardDrive className="w-5 h-5 text-blue-400" />}
-                    title="Instances compute"
+                    title="Instances de calcul"
                     value={instances.length.toString()}
                     hint="CPU / RAM dédiées"
                 />
@@ -161,7 +195,7 @@ export default function ProjectDahsboardPage() {
                 <StatCard
                     icon={<ShieldCheck className="w-5 h-5 text-purple-400" />}
                     title="Sécurité"
-                    value="Backups actifs"
+                    value="Sauvegardes actives"
                     hint="Chiffrement & PITR"
                 />
             </div>
@@ -204,7 +238,7 @@ export default function ProjectDahsboardPage() {
                         icon={<Activity className="w-4 h-4 text-emerald-400" />}
                     />
                     <ActionLink
-                        title="Backups"
+                        title="Sauvegardes"
                         description="Snapshots, restauration"
                         href={`/dashboard/project/${String(projectSlug ?? "")}/database/sql`}
                         icon={<HardDrive className="w-4 h-4 text-blue-400" />}
@@ -216,7 +250,7 @@ export default function ProjectDahsboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Compute Instances</CardTitle>
+                        <CardTitle>Instances de calcul</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {instances.length === 0 && (
@@ -244,7 +278,7 @@ export default function ProjectDahsboardPage() {
                                                 : "bg-yellow-600 text-white"
                                         }
                                     >
-                                        {instance.status}
+                                        {instance.status === "running" ? "En cours" : instance.status}
                                     </Badge>
                                 </div>
                             </div>
@@ -254,7 +288,7 @@ export default function ProjectDahsboardPage() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Databases</CardTitle>
+                        <CardTitle>Bases de données</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {databases.length === 0 && (
@@ -269,7 +303,7 @@ export default function ProjectDahsboardPage() {
                                 className="flex items-center justify-between rounded-lg border border-neutral-800 px-4 py-3"
                             >
                                 <div>
-                                    <div className="font-medium">{db.name ?? "Database"}</div>
+                                    <div className="font-medium">{db.name ?? "Base de données"}</div>
                                     <div className="text-sm text-neutral-400">
                                         Plan : {db.databasePlan?.name ?? "N/A"}
                                     </div>
@@ -288,18 +322,18 @@ export default function ProjectDahsboardPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Database Health</CardTitle>
+                        <CardTitle>Santé de la base</CardTitle>
                     </CardHeader>
                     <CardContent className="text-neutral-400 space-y-3">
-                        <HealthRow label="Replication lag" value="0 ms" />
-                        <HealthRow label="Backups" value="Enabled" />
-                        <HealthRow label="Point-in-time recovery" value="Enabled" />
+                        <HealthRow label="Lag de réplication" value="0 ms" />
+                        <HealthRow label="Sauvegardes" value="Activé" />
+                        <HealthRow label="Récupération PITR" value="Activé" />
                     </CardContent>
                 </Card>
 
                 <Card>
                     <CardHeader className="border-b border-neutral-800 pb-6">
-                        <CardTitle>Slow Queries</CardTitle>
+                        <CardTitle>Requêtes lentes</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                         {metrics?.recentQuery && metrics.recentQuery.length > 0 ? (
@@ -319,9 +353,220 @@ export default function ProjectDahsboardPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Modal Connexion — style Supabase */}
+            {showConnect && (
+                <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
+                    <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-[#111] overflow-hidden">
+
+                        {/* Header */}
+                        <div className="flex items-start justify-between px-6 pt-5 pb-4">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">Connecter à votre projet</h3>
+                                <p className="text-sm text-neutral-400 mt-0.5">
+                                    Obtenez les chaînes de connexion et variables d'environnement pour votre application.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowConnect(false)}
+                                className="p-1.5 rounded-lg hover:bg-neutral-900/60 text-neutral-400 hover:text-white transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="px-6 border-b border-neutral-800 overflow-x-auto">
+                            <div className="flex gap-0 min-w-max">
+                                {([
+                                    { id: "string", label: "Chaîne de connexion" },
+                                    { id: "frameworks", label: "Frameworks App" },
+                                    { id: "mobile", label: "Frameworks Mobile" },
+                                    { id: "orm", label: "ORMs" },
+                                    { id: "apikeys", label: "Clés API" },
+                                    { id: "mcp", label: "MCP" },
+                                ] as const).map((tab) => (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setConnectTab(tab.id)}
+                                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                                            connectTab === tab.id
+                                                ? "border-white text-white"
+                                                : "border-transparent text-neutral-400 hover:text-neutral-200"
+                                        }`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Tab content */}
+                        <div className="px-6 py-5 space-y-5">
+                            {connectTab === "string" && (
+                                <>
+                                    {/* Selectors row */}
+                                    <div className="flex flex-wrap gap-3">
+                                        {/* Type */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-neutral-500">Type</span>
+                                            <div className="flex rounded-lg border border-neutral-700 overflow-hidden text-sm">
+                                                {(["URI", "JDBC", ".env"] as const).map((t) => (
+                                                    <button
+                                                        key={t}
+                                                        onClick={() => setConnectType(t === ".env" ? "env" : t)}
+                                                        className={`px-3 py-1.5 transition-colors ${
+                                                            (t === ".env" ? connectType === "env" : connectType === t)
+                                                                ? "bg-neutral-700 text-white"
+                                                                : "text-neutral-400 hover:text-white"
+                                                        }`}
+                                                    >
+                                                        {t}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Source */}
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-neutral-500">Source</span>
+                                            <div className="flex rounded-lg border border-neutral-700 overflow-hidden text-sm">
+                                                {([
+                                                    { id: "direct", label: "Base principale" },
+                                                    { id: "pooler", label: "Pooler" },
+                                                ] as const).map((s) => (
+                                                    <button
+                                                        key={s.id}
+                                                        onClick={() => setConnectSource(s.id)}
+                                                        className={`px-3 py-1.5 transition-colors ${
+                                                            connectSource === s.id
+                                                                ? "bg-neutral-700 text-white"
+                                                                : "text-neutral-400 hover:text-white"
+                                                        }`}
+                                                    >
+                                                        {s.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Connection section */}
+                                    <div className="rounded-lg border border-neutral-800 bg-[#0b0b0b] overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-neutral-800">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <div className="text-sm font-medium text-white">
+                                                        {connectSource === "direct" ? "Connexion directe" : "Session Pooler"}
+                                                    </div>
+                                                    <div className="text-xs text-neutral-500 mt-0.5">
+                                                        {connectSource === "direct"
+                                                            ? "Idéal pour les connexions persistantes (VMs, conteneurs)."
+                                                            : "Idéal pour les environnements sans état (serverless, edge)."}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Connection string display */}
+                                        <div className="px-4 py-3 flex items-center gap-3">
+                                            <code className="flex-1 font-mono text-sm text-neutral-300 break-all">
+                                                {connectType === "env"
+                                                    ? `DATABASE_URL="${connString}"`
+                                                    : connectType === "JDBC"
+                                                    ? `jdbc:postgresql://${connHost}:${connPort}/${connDb}?user=${connUser}&password=[MOT_DE_PASSE]`
+                                                    : connString}
+                                            </code>
+                                            <button
+                                                onClick={() => copyToClipboard(
+                                                    connectType === "env" ? `DATABASE_URL="${connString}"` : connString,
+                                                    "connstring"
+                                                )}
+                                                className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                                            >
+                                                {copiedField === "connstring"
+                                                    ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                                    : <Copy className="w-4 h-4" />
+                                                }
+                                            </button>
+                                        </div>
+
+                                        {/* View params toggle */}
+                                        <button
+                                            onClick={() => setShowParams(!showParams)}
+                                            className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-neutral-400 hover:text-white border-t border-neutral-800 transition-colors hover:bg-neutral-900/40"
+                                        >
+                                            <span className="text-neutral-500">›</span>
+                                            {showParams ? "Masquer les paramètres" : "Voir les paramètres"}
+                                        </button>
+
+                                        {/* Params expanded */}
+                                        {showParams && (
+                                            <div className="border-t border-neutral-800 grid grid-cols-2 gap-px bg-neutral-800">
+                                                {[
+                                                    { label: "Hôte", value: connHost, key: "host" },
+                                                    { label: "Port", value: String(connPort), key: "port" },
+                                                    { label: "Base de données", value: connDb, key: "db" },
+                                                    { label: "Utilisateur", value: connUser, key: "user" },
+                                                ].map((p) => (
+                                                    <div key={p.key} className="bg-[#0b0b0b] px-4 py-2.5 flex items-center justify-between gap-2">
+                                                        <div>
+                                                            <div className="text-xs text-neutral-500">{p.label}</div>
+                                                            <div className="font-mono text-sm text-neutral-200 truncate max-w-[180px]">{p.value}</div>
+                                                        </div>
+                                                        <button
+                                                            onClick={() => copyToClipboard(p.value, p.key)}
+                                                            className="text-neutral-600 hover:text-white transition-colors shrink-0"
+                                                        >
+                                                            {copiedField === p.key
+                                                                ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                                                : <Copy className="w-3.5 h-3.5" />
+                                                            }
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                                {/* Password */}
+                                                <div className="bg-[#0b0b0b] px-4 py-2.5 col-span-2 flex items-center justify-between gap-2">
+                                                    <div className="flex-1">
+                                                        <div className="text-xs text-neutral-500">Mot de passe</div>
+                                                        <div className="font-mono text-sm text-neutral-200">
+                                                            {showPassword ? connPasswordReal : connPassword}
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="text-neutral-500 hover:text-white transition-colors"
+                                                    >
+                                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Reset password */}
+                                    <p className="text-xs text-neutral-500">
+                                        Vous pouvez réinitialiser le mot de passe depuis les{" "}
+                                        <span className="text-neutral-300 underline cursor-pointer">
+                                            paramètres de la base de données
+                                        </span>.
+                                    </p>
+                                </>
+                            )}
+
+                            {connectTab !== "string" && (
+                                <div className="py-10 text-center text-neutral-500 text-sm border border-dashed border-neutral-800 rounded-lg">
+                                    Bientôt disponible
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 }
+
 
 function StatCard({
     icon,
@@ -391,7 +636,7 @@ function SlowQueryRow({ query, duration, calls }: { query: string; duration?: st
                 <span className="text-neutral-400">
                     {duration && <>{duration}</>}
                     {duration && calls && <> · </>}
-                    {calls && <>{calls} calls</>}
+                    {calls && <>{calls} appels</>}
                 </span>
             )}
         </div>
