@@ -354,7 +354,7 @@ export default function ProjectDahsboardPage() {
                 </Card>
             </div>
 
-            {/* Modal Connexion — style Supabase */}
+            {/* Modal Connexion */}
             {showConnect && (
                 <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
                     <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-[#111] overflow-hidden">
