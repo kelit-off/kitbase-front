@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import QueryProvider from "@/libs/QueryProvider";
 
@@ -54,6 +55,15 @@ export default function RootLayout({
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
                 <QueryProvider>{children}</QueryProvider>
+                <Script src="https://www.googletagmanager.com/gtag/js?id=G-NYXVF30Q6P" strategy="afterInteractive" />
+                <Script id="google-analytics" strategy="afterInteractive">
+                    {`
+                        window.dataLayer = window.dataLayer || [];
+                        function gtag(){dataLayer.push(arguments);}
+                        gtag('js', new Date());
+                        gtag('config', 'G-NYXVF30Q6P');
+                    `}
+                </Script>
             </body>
         </html>
     );
