@@ -82,6 +82,18 @@ const navigation: NavItem[] = [
 		icon: Code,
 		requiresProject: true,
 	},
+	{
+		name: "Monitoring",
+		href: ({ projectSlug }) => `/dashboard/project/${projectSlug}/monitoring`,
+		icon: BarChart3,
+		requiresProject: true,
+	},
+	{
+		name: "Paramètres",
+		href: ({ projectSlug }) => `/dashboard/project/${projectSlug}/settings`,
+		icon: Settings,
+		requiresProject: true,
+	},
 ];
 
 

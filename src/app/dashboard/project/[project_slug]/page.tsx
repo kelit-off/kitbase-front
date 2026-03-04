@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useProject } from "@/hooks/useProject";
 import DashboardLayout from "@/layout/dashboardLayout";
 import api from "@/libs/api";
+import { ComputerInstance } from "@/libs/api/project.api";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -23,32 +24,43 @@ import {
     EyeOff,
     CheckCircle2,
     X,
+    Loader2,
+    Clock,
+    PauseCircle,
+    XCircle,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ProjectType = {
     name?: string;
-    host?: string;
-    port?: number;
-    username?: string;
+    host?: string | null;
     databases?: Array<{
-        id?: string;
+        id?: number;
         name?: string;
-        databasePlan?: { name?: string };
+        username?: string;
+        port?: number;
     }>;
-    computerInstances?: Array<{
-        id: string;
-        name?: string;
-        status: string;
-        computerPlan: {
-            code: string;
-            name: string;
-            cpuCores: number;
-            memoryMb: number;
-        };
-    }>;
+    computerInstances?: ComputerInstance[];
 };
 
-export default function ProjectDahsboardPage() {
+function InstanceStatusBadge({ instance }: { instance: ComputerInstance }) {
+    const map: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
+        PENDING:      { label: "En attente",         className: "bg-neutral-700 text-neutral-200",   icon: <Clock className="w-3 h-3" /> },
+        PROVISIONING: { label: "Provisionnement…",   className: "bg-blue-600/80 text-white",         icon: <Loader2 className="w-3 h-3 animate-spin" /> },
+        RUNNING:      { label: "En ligne",            className: "bg-emerald-600 text-white",         icon: <CheckCircle2 className="w-3 h-3" /> },
+        SUSPENDED:    { label: "Suspendu",            className: "bg-orange-600/80 text-white",       icon: <PauseCircle className="w-3 h-3" /> },
+        FAILED:       { label: `Échec (${instance.retryCount}/5)`, className: "bg-red-700 text-white", icon: <XCircle className="w-3 h-3" /> },
+    };
+    const info = map[instance.status] ?? map["PENDING"];
+    return (
+        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${info.className}`}>
+            {info.icon}
+            {info.label}
+        </span>
+    );
+}
+
+export default function ProjectDashboardPage() {
     const params = useParams();
     const projectSlugParam = params.project_slug;
     const teamSlugParam = params.team_slug;
@@ -59,14 +71,28 @@ export default function ProjectDahsboardPage() {
         ? teamSlugParam[0]
         : (teamSlugParam as string | undefined);
 
+    const queryClient = useQueryClient();
     const { data, isLoading } = useProject({ projectSlug, teamSlug } as any);
     const project = (Array.isArray(data) ? data[0] : data) as ProjectType | undefined;
+
+    // Polling: refetch every 3s when any instance is not RUNNING or FAILED
+    const needsPolling = project?.computerInstances?.some(
+        (i) => i.status !== "RUNNING" && i.status !== "FAILED"
+    );
+
+    useEffect(() => {
+        if (!needsPolling || !projectSlug) return;
+        const interval = setInterval(() => {
+            queryClient.invalidateQueries({ queryKey: ["project", projectSlug] });
+        }, 3000);
+        return () => clearInterval(interval);
+    }, [needsPolling, projectSlug, queryClient]);
 
     const [metrics, setMetrics] = useState<{
         totalQueries: number;
         activeConnections: number;
         databaseSizeBytes: number;
-        recentQuery: []
+        recentQuery: Array<{ query: string; calls: number; totalTime: number; meanTime: number }>;
     } | null>(null);
 
     const [showConnect, setShowConnect] = useState(false);
@@ -80,15 +106,13 @@ export default function ProjectDahsboardPage() {
     useEffect(() => {
         const fetchMetrics = async () => {
             if (!projectSlug) return;
-
             try {
                 const response = await api().get(`/monitoring/metrics/project/${projectSlug}`);
                 setMetrics(response.data.summary);
-            } catch (err) {
-                console.error("Erreur lors du chargement des métriques", err);
+            } catch {
+                // ignore
             }
         };
-
         fetchMetrics();
         const interval = setInterval(fetchMetrics, 30000);
         return () => clearInterval(interval);
@@ -136,15 +160,15 @@ export default function ProjectDahsboardPage() {
 
     const databases = project.databases ?? [];
     const instances = project.computerInstances ?? [];
+    const primaryInstance = instances.find(i => i.role === "primary") ?? instances[0];
 
-    // Connection info from project
-    const connHost = project.host ?? `db-${projectSlug}.kitbase.io`;
-    const connPort = project.port ?? 5432;
+    const connHost = project.host ?? `db-${projectSlug}.kitbase.cloud`;
+    const connPort = primaryInstance?.port ?? 5432;
     const connDb = databases[0]?.name ?? projectSlug ?? "postgres";
-    const connUser = project.username ?? "postgres";
+    const connUser = primaryInstance?.dbUser ?? databases[0]?.username ?? "postgres";
     const connPassword = "••••••••••••";
     const connPasswordReal = "[mot de passe du projet]";
-    const connString = `postgresql://${connUser}:${connPasswordReal}@${connHost}:${connPort}?sslmode=require`;
+    const connString = `postgresql://${connUser}:${connPasswordReal}@${connHost}:${connPort}/${connDb}?sslmode=require`;
 
     return (
         <DashboardLayout className="px-8 py-6 space-y-8">
@@ -152,6 +176,10 @@ export default function ProjectDahsboardPage() {
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex flex-wrap items-center gap-3">
                     <h1 className="text-2xl font-semibold">{project.name}</h1>
+
+                    {primaryInstance && (
+                        <InstanceStatusBadge instance={primaryInstance} />
+                    )}
 
                     <Button onClick={() => setShowConnect(true)}>
                         <PlugZap className="w-4 h-4 mr-2" />
@@ -168,7 +196,6 @@ export default function ProjectDahsboardPage() {
                         Instances{" "}
                         <strong className="text-white">{instances.length}</strong>
                     </span>
-                    <Badge className="bg-emerald-600 text-white">Opérationnel</Badge>
                 </div>
             </div>
 
@@ -212,7 +239,7 @@ export default function ProjectDahsboardPage() {
                             variant="outline"
                         >
                             <PlugZap className="w-4 h-4 mr-2" />
-                            Ouvrir SQL Editor
+                            SQL Editor
                         </Button>
                         <Button
                             as={Link}
@@ -220,21 +247,21 @@ export default function ProjectDahsboardPage() {
                             size="sm"
                         >
                             <Table className="w-4 h-4 mr-2" />
-                            Gérer les tables
+                            Tables
                         </Button>
                     </div>
                 </CardHeader>
                 <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     <ActionLink
                         title="Paramètres projet"
-                        description="Domaines, API keys, webhooks"
-                        href={`/dashboard/project/${String(projectSlug ?? "")}/database/sql`}
+                        description="Renommer, supprimer le projet"
+                        href={`/dashboard/project/${String(projectSlug ?? "")}/settings`}
                         icon={<Wrench className="w-4 h-4 text-indigo-400" />}
                     />
                     <ActionLink
                         title="Monitoring"
-                        description="Performance, temps de réponse"
-                        href={`/dashboard/project/${String(projectSlug ?? "")}/database/sql`}
+                        description="Performance, connexions, requêtes"
+                        href={`/dashboard/project/${String(projectSlug ?? "")}/monitoring`}
                         icon={<Activity className="w-4 h-4 text-emerald-400" />}
                     />
                     <ActionLink
@@ -264,22 +291,23 @@ export default function ProjectDahsboardPage() {
                                 className="flex items-center justify-between rounded-lg border border-neutral-800 px-4 py-3"
                             >
                                 <div>
-                                    <div className="font-medium">{instance.name}</div>
+                                    <div className="font-medium capitalize">{instance.role}</div>
                                     <div className="text-sm text-neutral-400">
-                                        {instance.computerPlan.cpuCores} vCPU · {instance.computerPlan.memoryMb} MB RAM
+                                        {instance.computerPlan.cpuCores
+                                            ? `${instance.computerPlan.cpuCores} vCPU · `
+                                            : "CPU partagé · "}
+                                        {instance.computerPlan.memoryMb >= 1024
+                                            ? `${(instance.computerPlan.memoryMb / 1024).toFixed(1)} GB RAM`
+                                            : `${instance.computerPlan.memoryMb} MB RAM`}
+                                        {" · "}
+                                        {instance.computerPlan.storageMb >= 1024
+                                            ? `${(instance.computerPlan.storageMb / 1024).toFixed(0)} GB`
+                                            : `${instance.computerPlan.storageMb} MB`}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <Badge variant="secondary">{instance.computerPlan.name}</Badge>
-                                    <Badge
-                                        className={
-                                            instance.status === "running"
-                                                ? "bg-emerald-600 text-white"
-                                                : "bg-yellow-600 text-white"
-                                        }
-                                    >
-                                        {instance.status === "running" ? "En cours" : instance.status}
-                                    </Badge>
+                                    <InstanceStatusBadge instance={instance} />
                                 </div>
                             </div>
                         ))}
@@ -296,7 +324,6 @@ export default function ProjectDahsboardPage() {
                                 Aucune base créée pour ce projet.
                             </p>
                         )}
-
                         {databases.map((db) => (
                             <div
                                 key={db.id ?? db.name}
@@ -305,7 +332,7 @@ export default function ProjectDahsboardPage() {
                                 <div>
                                     <div className="font-medium">{db.name ?? "Base de données"}</div>
                                     <div className="text-sm text-neutral-400">
-                                        Plan : {db.databasePlan?.name ?? "N/A"}
+                                        {db.username} · port {db.port ?? 5432}
                                     </div>
                                 </div>
                                 <Badge variant="secondary" className="flex items-center gap-2">
@@ -335,18 +362,18 @@ export default function ProjectDahsboardPage() {
                     <CardHeader className="border-b border-neutral-800 pb-6">
                         <CardTitle>Requêtes lentes</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="space-y-3 pt-4">
                         {metrics?.recentQuery && metrics.recentQuery.length > 0 ? (
-                            <>
-                                {metrics.recentQuery.map((query, index) => (
-                                    <SlowQueryRow
-                                        key={`${index}`}
-                                        query={query}
-                                    />
-                                ))}
-                            </>
+                            metrics.recentQuery.map((q, i) => (
+                                <div key={i} className="flex items-center justify-between text-sm">
+                                    <span className="font-mono text-neutral-200 truncate pr-4 max-w-65">{q.query}</span>
+                                    <span className="text-neutral-400 shrink-0">
+                                        {q.meanTime.toFixed(1)} ms · {q.calls} appels
+                                    </span>
+                                </div>
+                            ))
                         ) : (
-                            <div className="text-center text-muted-foreground text-sm py-4">
+                            <div className="text-center text-neutral-500 text-sm py-4">
                                 Aucune requête récente disponible
                             </div>
                         )}
@@ -358,13 +385,11 @@ export default function ProjectDahsboardPage() {
             {showConnect && (
                 <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
                     <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-[#111] overflow-hidden">
-
-                        {/* Header */}
                         <div className="flex items-start justify-between px-6 pt-5 pb-4">
                             <div>
                                 <h3 className="text-lg font-semibold text-white">Connecter à votre projet</h3>
                                 <p className="text-sm text-neutral-400 mt-0.5">
-                                    Obtenez les chaînes de connexion et variables d'environnement pour votre application.
+                                    Chaînes de connexion et variables d'environnement.
                                 </p>
                             </div>
                             <button
@@ -375,7 +400,6 @@ export default function ProjectDahsboardPage() {
                             </button>
                         </div>
 
-                        {/* Tabs */}
                         <div className="px-6 border-b border-neutral-800 overflow-x-auto">
                             <div className="flex gap-0 min-w-max">
                                 {([
@@ -401,13 +425,10 @@ export default function ProjectDahsboardPage() {
                             </div>
                         </div>
 
-                        {/* Tab content */}
                         <div className="px-6 py-5 space-y-5">
                             {connectTab === "string" && (
                                 <>
-                                    {/* Selectors row */}
                                     <div className="flex flex-wrap gap-3">
-                                        {/* Type */}
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs text-neutral-500">Type</span>
                                             <div className="flex rounded-lg border border-neutral-700 overflow-hidden text-sm">
@@ -426,8 +447,6 @@ export default function ProjectDahsboardPage() {
                                                 ))}
                                             </div>
                                         </div>
-
-                                        {/* Source */}
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs text-neutral-500">Source</span>
                                             <div className="flex rounded-lg border border-neutral-700 overflow-hidden text-sm">
@@ -451,24 +470,18 @@ export default function ProjectDahsboardPage() {
                                         </div>
                                     </div>
 
-                                    {/* Connection section */}
                                     <div className="rounded-lg border border-neutral-800 bg-[#0b0b0b] overflow-hidden">
                                         <div className="px-4 py-3 border-b border-neutral-800">
-                                            <div className="flex items-center justify-between">
-                                                <div>
-                                                    <div className="text-sm font-medium text-white">
-                                                        {connectSource === "direct" ? "Connexion directe" : "Session Pooler"}
-                                                    </div>
-                                                    <div className="text-xs text-neutral-500 mt-0.5">
-                                                        {connectSource === "direct"
-                                                            ? "Idéal pour les connexions persistantes (VMs, conteneurs)."
-                                                            : "Idéal pour les environnements sans état (serverless, edge)."}
-                                                    </div>
-                                                </div>
+                                            <div className="text-sm font-medium text-white">
+                                                {connectSource === "direct" ? "Connexion directe" : "Session Pooler"}
+                                            </div>
+                                            <div className="text-xs text-neutral-500 mt-0.5">
+                                                {connectSource === "direct"
+                                                    ? "Idéal pour les connexions persistantes (VMs, conteneurs)."
+                                                    : "Idéal pour les environnements sans état (serverless, edge)."}
                                             </div>
                                         </div>
 
-                                        {/* Connection string display */}
                                         <div className="px-4 py-3 flex items-center gap-3">
                                             <code className="flex-1 font-mono text-sm text-neutral-300 break-all">
                                                 {connectType === "env"
@@ -491,7 +504,6 @@ export default function ProjectDahsboardPage() {
                                             </button>
                                         </div>
 
-                                        {/* View params toggle */}
                                         <button
                                             onClick={() => setShowParams(!showParams)}
                                             className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-neutral-400 hover:text-white border-t border-neutral-800 transition-colors hover:bg-neutral-900/40"
@@ -500,7 +512,6 @@ export default function ProjectDahsboardPage() {
                                             {showParams ? "Masquer les paramètres" : "Voir les paramètres"}
                                         </button>
 
-                                        {/* Params expanded */}
                                         {showParams && (
                                             <div className="border-t border-neutral-800 grid grid-cols-2 gap-px bg-neutral-800">
                                                 {[
@@ -525,7 +536,6 @@ export default function ProjectDahsboardPage() {
                                                         </button>
                                                     </div>
                                                 ))}
-                                                {/* Password */}
                                                 <div className="bg-[#0b0b0b] px-4 py-2.5 col-span-2 flex items-center justify-between gap-2">
                                                     <div className="flex-1">
                                                         <div className="text-xs text-neutral-500">Mot de passe</div>
@@ -544,12 +554,15 @@ export default function ProjectDahsboardPage() {
                                         )}
                                     </div>
 
-                                    {/* Reset password */}
                                     <p className="text-xs text-neutral-500">
-                                        Vous pouvez réinitialiser le mot de passe depuis les{" "}
-                                        <span className="text-neutral-300 underline cursor-pointer">
-                                            paramètres de la base de données
-                                        </span>.
+                                        Réinitialisez le mot de passe depuis les{" "}
+                                        <Link
+                                            href={`/dashboard/project/${projectSlug}/settings`}
+                                            className="text-neutral-300 underline"
+                                            onClick={() => setShowConnect(false)}
+                                        >
+                                            paramètres du projet
+                                        </Link>.
                                     </p>
                                 </>
                             )}
@@ -567,23 +580,12 @@ export default function ProjectDahsboardPage() {
     );
 }
 
-
-function StatCard({
-    icon,
-    title,
-    value,
-    hint,
-}: {
-    icon: React.ReactNode;
-    title: string;
-    value: string;
-    hint: string;
+function StatCard({ icon, title, value, hint }: {
+    icon: React.ReactNode; title: string; value: string; hint: string;
 }) {
     return (
         <div className="rounded-xl border border-neutral-800 bg-[#0f0f0f] p-4 space-y-2">
-            <div className="flex items-center justify-between">
-                <div className="p-2 rounded-lg bg-neutral-900 border border-neutral-800">{icon}</div>
-            </div>
+            <div className="p-2 rounded-lg bg-neutral-900 border border-neutral-800 w-fit">{icon}</div>
             <div className="text-2xl font-semibold">{value}</div>
             <div className="text-sm text-neutral-400">{title}</div>
             <div className="text-xs text-neutral-500">{hint}</div>
@@ -591,16 +593,8 @@ function StatCard({
     );
 }
 
-function ActionLink({
-    title,
-    description,
-    href,
-    icon,
-}: {
-    title: string;
-    description: string;
-    href: string;
-    icon: React.ReactNode;
+function ActionLink({ title, description, href, icon }: {
+    title: string; description: string; href: string; icon: React.ReactNode;
 }) {
     return (
         <Link
@@ -608,13 +602,11 @@ function ActionLink({
             className="flex items-start gap-3 rounded-lg border border-neutral-800 bg-[#0b0b0b] px-4 py-3 hover:border-indigo-500/60 transition-colors"
         >
             <div className="p-2 rounded bg-neutral-900 border border-neutral-800">{icon}</div>
-            <div className="space-y-1">
-                <div className="font-medium text-white flex items-center gap-2">
-                    {title}
-                </div>
+            <div className="space-y-1 flex-1">
+                <div className="font-medium text-white">{title}</div>
                 <p className="text-sm text-neutral-400">{description}</p>
             </div>
-            <ArrowUpRight className="w-4 h-4 text-neutral-500 ml-auto" />
+            <ArrowUpRight className="w-4 h-4 text-neutral-500 ml-auto mt-1 shrink-0" />
         </Link>
     );
 }
@@ -624,21 +616,6 @@ function HealthRow({ label, value }: { label: string; value: string }) {
         <div className="flex items-center justify-between text-sm">
             <span>{label}</span>
             <span className="text-white">{value}</span>
-        </div>
-    );
-}
-
-function SlowQueryRow({ query, duration, calls }: { query: string; duration?: string; calls?: string }) {
-    return (
-        <div className="flex items-center justify-between text-sm">
-            <span className="font-mono text-neutral-200 truncate pr-4">{query}</span>
-            {(duration || calls) && (
-                <span className="text-neutral-400">
-                    {duration && <>{duration}</>}
-                    {duration && calls && <> · </>}
-                    {calls && <>{calls} appels</>}
-                </span>
-            )}
         </div>
     );
 }
