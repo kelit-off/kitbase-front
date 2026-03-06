@@ -77,6 +77,9 @@ export default function ProjectDashboardPage() {
     const { data, isLoading } = useProject({ projectSlug, teamSlug } as any);
     const project = (Array.isArray(data) ? data[0] : data) as ProjectType | undefined;
 
+    const [lastPolledAt, setLastPolledAt] = useState<Date | null>(null);
+    const [secondsSincePoll, setSecondsSincePoll] = useState<number | null>(null);
+
     // Polling: refetch every 3s when any instance is not RUNNING or FAILED
     const needsPolling = project?.computerInstances?.some(
         (i) => i.status !== "RUNNING" && i.status !== "FAILED"
@@ -114,8 +117,6 @@ export default function ProjectDashboardPage() {
     const [connectType, setConnectType] = useState<"URI" | "JDBC" | "env">("URI");
     const [connectSource, setConnectSource] = useState<"direct" | "pooler">("direct");
     const [showParams, setShowParams] = useState(false);
-    const [lastPolledAt, setLastPolledAt] = useState<Date | null>(null);
-    const [secondsSincePoll, setSecondsSincePoll] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchMetrics = async () => {
