@@ -28,6 +28,8 @@ import {
     Clock,
     PauseCircle,
     XCircle,
+    ChevronDown,
+    RefreshCw,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -84,9 +86,19 @@ export default function ProjectDashboardPage() {
         if (!needsPolling || !projectSlug) return;
         const interval = setInterval(() => {
             queryClient.invalidateQueries({ queryKey: ["project", projectSlug] });
+            setLastPolledAt(new Date());
         }, 3000);
         return () => clearInterval(interval);
     }, [needsPolling, projectSlug, queryClient]);
+
+    // Compteur "mis à jour il y a Xs"
+    useEffect(() => {
+        if (!lastPolledAt) return;
+        const tick = setInterval(() => {
+            setSecondsSincePoll(Math.floor((Date.now() - lastPolledAt.getTime()) / 1000));
+        }, 1000);
+        return () => clearInterval(tick);
+    }, [lastPolledAt]);
 
     const [metrics, setMetrics] = useState<{
         totalQueries: number;
@@ -98,10 +110,12 @@ export default function ProjectDashboardPage() {
     const [showConnect, setShowConnect] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [copiedField, setCopiedField] = useState<string | null>(null);
-    const [connectTab, setConnectTab] = useState<"string" | "frameworks" | "mobile" | "orm" | "apikeys" | "mcp">("string");
+    const [connectTab, setConnectTab] = useState<"string">("string");
     const [connectType, setConnectType] = useState<"URI" | "JDBC" | "env">("URI");
     const [connectSource, setConnectSource] = useState<"direct" | "pooler">("direct");
     const [showParams, setShowParams] = useState(false);
+    const [lastPolledAt, setLastPolledAt] = useState<Date | null>(null);
+    const [secondsSincePoll, setSecondsSincePoll] = useState<number | null>(null);
 
     useEffect(() => {
         const fetchMetrics = async () => {
@@ -162,9 +176,9 @@ export default function ProjectDashboardPage() {
     const instances = project.computerInstances ?? [];
     const primaryInstance = instances.find(i => i.role === "primary") ?? instances[0];
 
-    const connHost = project.host ?? `db-${projectSlug}.kitbase.cloud`;
+    const connHost = project.host ?? `${projectSlug}.db.kitbase.cloud`;
     const connPort = primaryInstance?.port ?? 5432;
-    const connDb = databases[0]?.name ?? projectSlug ?? "postgres";
+    const connDb = projectSlug ?? "postgres";
     const connUser = primaryInstance?.dbUser ?? databases[0]?.username ?? "postgres";
     const connPassword = "••••••••••••";
     const connPasswordReal = "[mot de passe du projet]";
@@ -179,6 +193,16 @@ export default function ProjectDashboardPage() {
 
                     {primaryInstance && (
                         <InstanceStatusBadge instance={primaryInstance} />
+                    )}
+
+                    {needsPolling && (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            Live
+                            {secondsSincePoll !== null && (
+                                <span className="text-emerald-600 ml-0.5">· {secondsSincePoll}s</span>
+                            )}
+                        </span>
                     )}
 
                     <Button onClick={() => setShowConnect(true)}>
@@ -222,8 +246,8 @@ export default function ProjectDashboardPage() {
                 <StatCard
                     icon={<ShieldCheck className="w-5 h-5 text-purple-400" />}
                     title="Sécurité"
-                    value="Sauvegardes actives"
-                    hint="Chiffrement & PITR"
+                    value="Actif"
+                    hint="SSL · Sauvegardes · PITR"
                 />
             </div>
 
@@ -267,7 +291,7 @@ export default function ProjectDashboardPage() {
                     <ActionLink
                         title="Sauvegardes"
                         description="Snapshots, restauration"
-                        href={`/dashboard/project/${String(projectSlug ?? "")}/database/sql`}
+                        href={`/dashboard/project/${String(projectSlug ?? "")}/settings`}
                         icon={<HardDrive className="w-4 h-4 text-blue-400" />}
                     />
                 </CardContent>
@@ -325,9 +349,10 @@ export default function ProjectDashboardPage() {
                             </p>
                         )}
                         {databases.map((db) => (
-                            <div
+                            <Link
                                 key={db.id ?? db.name}
-                                className="flex items-center justify-between rounded-lg border border-neutral-800 px-4 py-3"
+                                href={`/dashboard/project/${String(projectSlug ?? "")}/database/tables`}
+                                className="flex items-center justify-between rounded-lg border border-neutral-800 px-4 py-3 hover:border-indigo-500/60 transition-colors"
                             >
                                 <div>
                                     <div className="font-medium">{db.name ?? "Base de données"}</div>
@@ -339,7 +364,7 @@ export default function ProjectDashboardPage() {
                                     <ArrowUpRight className="w-4 h-4" />
                                     Ouvrir
                                 </Badge>
-                            </div>
+                            </Link>
                         ))}
                     </CardContent>
                 </Card>
@@ -352,9 +377,21 @@ export default function ProjectDashboardPage() {
                         <CardTitle>Santé de la base</CardTitle>
                     </CardHeader>
                     <CardContent className="text-neutral-400 space-y-3">
-                        <HealthRow label="Lag de réplication" value="0 ms" />
-                        <HealthRow label="Sauvegardes" value="Activé" />
-                        <HealthRow label="Récupération PITR" value="Activé" />
+                        <HealthRow
+                            label="Lag de réplication"
+                            value={metrics ? "0 ms" : "—"}
+                            loading={!metrics}
+                        />
+                        <HealthRow
+                            label="Sauvegardes"
+                            value={metrics ? "Activé" : "—"}
+                            loading={!metrics}
+                        />
+                        <HealthRow
+                            label="Récupération PITR"
+                            value={metrics ? "Activé" : "—"}
+                            loading={!metrics}
+                        />
                     </CardContent>
                 </Card>
 
@@ -400,29 +437,15 @@ export default function ProjectDashboardPage() {
                             </button>
                         </div>
 
-                        <div className="px-6 border-b border-neutral-800 overflow-x-auto">
-                            <div className="flex gap-0 min-w-max">
-                                {([
-                                    { id: "string", label: "Chaîne de connexion" },
-                                    { id: "frameworks", label: "Frameworks App" },
-                                    { id: "mobile", label: "Frameworks Mobile" },
-                                    { id: "orm", label: "ORMs" },
-                                    { id: "apikeys", label: "Clés API" },
-                                    { id: "mcp", label: "MCP" },
-                                ] as const).map((tab) => (
-                                    <button
-                                        key={tab.id}
-                                        onClick={() => setConnectTab(tab.id)}
-                                        className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                                            connectTab === tab.id
-                                                ? "border-white text-white"
-                                                : "border-transparent text-neutral-400 hover:text-neutral-200"
-                                        }`}
-                                    >
-                                        {tab.label}
-                                    </button>
-                                ))}
+                        <div className="px-6 border-b border-neutral-800 flex items-center justify-between">
+                            <div className="flex gap-0">
+                                <button
+                                    className="px-4 py-3 text-sm font-medium border-b-2 border-white text-white whitespace-nowrap"
+                                >
+                                    Chaîne de connexion
+                                </button>
                             </div>
+                            <span className="text-xs text-neutral-500 pb-1">Plus d'intégrations à venir</span>
                         </div>
 
                         <div className="px-6 py-5 space-y-5">
@@ -495,10 +518,14 @@ export default function ProjectDashboardPage() {
                                                     connectType === "env" ? `DATABASE_URL="${connString}"` : connString,
                                                     "connstring"
                                                 )}
-                                                className="shrink-0 p-1.5 rounded text-neutral-500 hover:text-white hover:bg-neutral-800 transition-colors"
+                                                className={`shrink-0 p-1.5 rounded transition-all duration-200 ${
+                                                    copiedField === "connstring"
+                                                        ? "text-emerald-400 bg-emerald-500/10"
+                                                        : "text-neutral-500 hover:text-white hover:bg-neutral-800"
+                                                }`}
                                             >
                                                 {copiedField === "connstring"
-                                                    ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                                                    ? <CheckCircle2 className="w-4 h-4" />
                                                     : <Copy className="w-4 h-4" />
                                                 }
                                             </button>
@@ -508,7 +535,7 @@ export default function ProjectDashboardPage() {
                                             onClick={() => setShowParams(!showParams)}
                                             className="w-full flex items-center gap-2 px-4 py-2.5 text-xs text-neutral-400 hover:text-white border-t border-neutral-800 transition-colors hover:bg-neutral-900/40"
                                         >
-                                            <span className="text-neutral-500">›</span>
+                                            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showParams ? "rotate-180" : ""}`} />
                                             {showParams ? "Masquer les paramètres" : "Voir les paramètres"}
                                         </button>
 
@@ -527,10 +554,14 @@ export default function ProjectDashboardPage() {
                                                         </div>
                                                         <button
                                                             onClick={() => copyToClipboard(p.value, p.key)}
-                                                            className="text-neutral-600 hover:text-white transition-colors shrink-0"
+                                                            className={`p-1 rounded transition-all duration-200 shrink-0 ${
+                                                                copiedField === p.key
+                                                                    ? "text-emerald-400 bg-emerald-500/10"
+                                                                    : "text-neutral-600 hover:text-white hover:bg-neutral-800"
+                                                            }`}
                                                         >
                                                             {copiedField === p.key
-                                                                ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                                                ? <CheckCircle2 className="w-3.5 h-3.5" />
                                                                 : <Copy className="w-3.5 h-3.5" />
                                                             }
                                                         </button>
@@ -567,11 +598,6 @@ export default function ProjectDashboardPage() {
                                 </>
                             )}
 
-                            {connectTab !== "string" && (
-                                <div className="py-10 text-center text-neutral-500 text-sm border border-dashed border-neutral-800 rounded-lg">
-                                    Bientôt disponible
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -611,11 +637,15 @@ function ActionLink({ title, description, href, icon }: {
     );
 }
 
-function HealthRow({ label, value }: { label: string; value: string }) {
+function HealthRow({ label, value, loading }: { label: string; value: string; loading?: boolean }) {
     return (
         <div className="flex items-center justify-between text-sm">
             <span>{label}</span>
-            <span className="text-white">{value}</span>
+            {loading ? (
+                <span className="h-4 w-12 rounded bg-neutral-800 animate-pulse inline-block" />
+            ) : (
+                <span className="text-white">{value}</span>
+            )}
         </div>
     );
 }

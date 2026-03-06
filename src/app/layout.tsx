@@ -31,26 +31,7 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="fr" suppressHydrationWarning>
-            <head>
-                <script
-                    dangerouslySetInnerHTML={{
-                        __html: `
-(function () {
-  const appearance = 'dark'; // 'light' | 'dark' | 'system'
-  const root = document.documentElement;
-
-  const isDark =
-    appearance === 'dark' ||
-    (appearance === 'system' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-  root.classList.toggle('dark', isDark);
-})();
-            `,
-                    }}
-                />
-            </head>
+        <html lang="fr" className="dark">
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >

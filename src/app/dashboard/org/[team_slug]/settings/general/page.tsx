@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +22,35 @@ export default function SettingsGeneralPage() {
     const [deleteConfirmText, setDeleteConfirmText] = useState("");
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [deleteCountdown, setDeleteCountdown] = useState(0);
+    const countdownRunning = useRef(false);
 
-    useState(() => {
+    useEffect(() => {
         if (team) setName(team.name);
-    });
+    }, [team]);
+
+    useEffect(() => {
+        const matches = deleteConfirmText !== "" && deleteConfirmText === team?.name;
+        if (matches && !countdownRunning.current) {
+            countdownRunning.current = true;
+            setDeleteCountdown(3);
+            const timer = setInterval(() => {
+                setDeleteCountdown((prev) => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        countdownRunning.current = false;
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+        if (!matches) {
+            countdownRunning.current = false;
+            setDeleteCountdown(0);
+        }
+    }, [deleteConfirmText, team?.name]);
 
     const handleUpdateName = async () => {
         if (!name.trim() || name === team?.name) return;
@@ -137,6 +162,14 @@ export default function SettingsGeneralPage() {
                                 placeholder={team?.name}
                                 className="bg-gray-950 border-gray-800"
                             />
+                            {deleteConfirmText === team?.name && deleteCountdown > 0 && (
+                                <div className="relative h-1 rounded-full bg-neutral-800 overflow-hidden">
+                                    <div
+                                        className="absolute left-0 top-0 h-full bg-red-500 transition-all duration-1000 ease-linear"
+                                        style={{ width: `${((3 - deleteCountdown) / 3) * 100}%` }}
+                                    />
+                                </div>
+                            )}
                             {deleteError && (
                                 <p className="text-red-400 text-sm">{deleteError}</p>
                             )}
@@ -148,6 +181,8 @@ export default function SettingsGeneralPage() {
                                     setShowDeleteConfirm(false);
                                     setDeleteConfirmText("");
                                     setDeleteError(null);
+                                    countdownRunning.current = false;
+                                    setDeleteCountdown(0);
                                 }}
                                 disabled={deleteLoading}
                             >
@@ -156,9 +191,13 @@ export default function SettingsGeneralPage() {
                             <Button
                                 variant="destructive"
                                 onClick={handleDelete}
-                                disabled={deleteLoading || deleteConfirmText !== team?.name}
+                                disabled={deleteLoading || deleteConfirmText !== team?.name || deleteCountdown > 0}
                             >
-                                {deleteLoading ? "Suppression..." : "Supprimer définitivement"}
+                                {deleteCountdown > 0
+                                    ? `Attendez ${deleteCountdown}s…`
+                                    : deleteLoading
+                                    ? "Suppression..."
+                                    : "Supprimer définitivement"}
                             </Button>
                         </div>
                     </div>
