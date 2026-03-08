@@ -1,87 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import DashboardLayout from "@/layout/dashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import api from "@/libs/api";
 import {
     Plus,
     Search,
     Table as TableIcon,
     Filter,
-    Columns3,
     Rows3,
     ChevronRight,
     X,
     Pencil,
     Trash2,
-    Copy,
-    CheckCircle2,
+    RefreshCw,
 } from "lucide-react";
 
-type TableMeta = {
-    name: string;
-    rows: number;
-    size: string;
-    updatedAt: string;
-    columns: Array<{ name: string; type: string; pk?: boolean; nullable?: boolean }>;
+type ApiTable = {
+    table_name: string;
+    table_type: string;
+    size_bytes: string;
+    size_pretty: string;
+    row_estimate: string;
 };
-
-const mockTables: TableMeta[] = [
-    {
-        name: "users",
-        rows: 1250,
-        size: "1.2 MB",
-        updatedAt: "Il y a 2h",
-        columns: [
-            { name: "id", type: "uuid", pk: true },
-            { name: "email", type: "text" },
-            { name: "created_at", type: "timestamptz" },
-        ],
-    },
-    {
-        name: "projects",
-        rows: 64,
-        size: "220 KB",
-        updatedAt: "Il y a 5h",
-        columns: [
-            { name: "id", type: "uuid", pk: true },
-            { name: "name", type: "text" },
-            { name: "team_id", type: "uuid" },
-        ],
-    },
-    {
-        name: "databases",
-        rows: 12,
-        size: "48 KB",
-        updatedAt: "Il y a 1j",
-        columns: [
-            { name: "id", type: "uuid", pk: true },
-            { name: "name", type: "text" },
-            { name: "project_id", type: "uuid" },
-        ],
-    },
-];
-
-function makeMockRows(table: TableMeta) {
-    if (table.name === "users") {
-        return [
-            { id: "8d0f…d2b3", email: "john@example.com", created_at: "2024-01-15" },
-            { id: "2a1b…9f10", email: "jane@example.com", created_at: "2024-01-15" },
-            { id: "1c2d…3e4f", email: "bob@example.com", created_at: "2024-01-14" },
-        ];
-    }
-    if (table.name === "projects") {
-        return [
-            { id: "a1", name: "kitbase", team_id: "team_01" },
-            { id: "b2", name: "demo", team_id: "team_01" },
-        ];
-    }
-    return [{ id: "db1", name: "main", project_id: "proj_01" }];
-}
 
 export default function TableManagerPage() {
     const params = useParams();
@@ -90,32 +36,42 @@ export default function TableManagerPage() {
         ? projectSlugParam[0]
         : (projectSlugParam as string | undefined);
 
+    const [tables, setTables] = useState<ApiTable[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [query, setQuery] = useState("");
-    const [selected, setSelected] = useState<TableMeta>(mockTables[0]);
+    const [selected, setSelected] = useState<ApiTable | null>(null);
     const [showCreate, setShowCreate] = useState(false);
     const [showInsert, setShowInsert] = useState(false);
-    const [copied, setCopied] = useState(false);
 
-    const tables = useMemo(() => {
-        const q = query.trim().toLowerCase();
-        if (!q) return mockTables;
-        return mockTables.filter((t) => t.name.toLowerCase().includes(q));
-    }, [query]);
-
-    const rows = useMemo(() => makeMockRows(selected), [selected]);
-
-    const copyCreateSql = async () => {
-        const ddl = `create table ${selected.name} (\n${selected.columns
-            .map((c) => `  ${c.name} ${c.type}${c.pk ? " primary key" : ""}`)
-            .join(",\n")}\n);`;
+    const fetchTables = async () => {
+        if (!projectSlug) return;
+        setLoading(true);
+        setError(null);
         try {
-            await navigator.clipboard.writeText(ddl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1200);
+            const response = await api().get(`/projects/${projectSlug}/tables`);
+            const data: ApiTable[] = response.data;
+            setTables(data);
+            if (data.length > 0 && !selected) {
+                setSelected(data[0]);
+            }
         } catch {
-            // ignore
+            setError("Impossible de charger les tables.");
+        } finally {
+            setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchTables();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [projectSlug]);
+
+    const filteredTables = useMemo(() => {
+        const q = query.trim().toLowerCase();
+        if (!q) return tables;
+        return tables.filter((t) => t.table_name.toLowerCase().includes(q));
+    }, [query, tables]);
 
     return (
         <DashboardLayout className="px-8 py-6">
@@ -132,16 +88,26 @@ export default function TableManagerPage() {
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={fetchTables} disabled={loading}>
+                            <RefreshCw className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                            Actualiser
+                        </Button>
                         <Button size="sm" variant="outline" onClick={() => setShowCreate(true)}>
                             <Plus className="w-4 h-4 mr-2" />
                             Nouvelle table
                         </Button>
-                        <Button size="sm" onClick={() => setShowInsert(true)}>
+                        <Button size="sm" onClick={() => setShowInsert(true)} disabled={!selected}>
                             <Plus className="w-4 h-4 mr-2" />
                             Insérer une ligne
                         </Button>
                     </div>
                 </div>
+
+                {error && (
+                    <div className="rounded-lg border border-red-900 bg-red-950/50 text-red-200 px-4 py-3 text-sm">
+                        {error}
+                    </div>
+                )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left: tables list */}
@@ -150,6 +116,11 @@ export default function TableManagerPage() {
                             <CardTitle className="flex items-center gap-2">
                                 <TableIcon className="w-5 h-5 text-indigo-400" />
                                 Tables
+                                {!loading && (
+                                    <Badge variant="secondary" className="ml-auto">
+                                        {tables.length}
+                                    </Badge>
+                                )}
                             </CardTitle>
                             <div className="relative">
                                 <Search className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -162,22 +133,30 @@ export default function TableManagerPage() {
                             </div>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                            {tables.map((t) => {
-                                const active = t.name === selected.name;
+                            {loading && (
+                                <div className="space-y-2">
+                                    {[...Array(3)].map((_, i) => (
+                                        <div key={i} className="h-16 rounded-lg bg-neutral-900 animate-pulse" />
+                                    ))}
+                                </div>
+                            )}
+
+                            {!loading && filteredTables.map((t) => {
+                                const active = selected?.table_name === t.table_name;
                                 return (
                                     <button
-                                        key={t.name}
+                                        key={t.table_name}
                                         onClick={() => setSelected(t)}
                                         className={`w-full rounded-lg border px-4 py-3 text-left transition-colors ${active
-                                                ? "border-indigo-500/60 bg-indigo-500/10"
-                                                : "border-neutral-800 bg-[#0b0b0b] hover:border-neutral-700"
+                                            ? "border-indigo-500/60 bg-indigo-500/10"
+                                            : "border-neutral-800 bg-[#0b0b0b] hover:border-neutral-700"
                                             }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="space-y-1">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-neutral-200">
-                                                        {t.name}
+                                                        {t.table_name}
                                                     </span>
                                                     {active && (
                                                         <Badge className="bg-indigo-600 text-white">
@@ -186,7 +165,7 @@ export default function TableManagerPage() {
                                                     )}
                                                 </div>
                                                 <div className="text-xs text-neutral-500">
-                                                    {t.rows.toLocaleString()} lignes • {t.size}
+                                                    ~{Number(t.row_estimate).toLocaleString()} lignes • {t.size_pretty}
                                                 </div>
                                             </div>
                                             <ChevronRight className="w-4 h-4 text-neutral-500 mt-1" />
@@ -195,7 +174,7 @@ export default function TableManagerPage() {
                                 );
                             })}
 
-                            {tables.length === 0 && (
+                            {!loading && filteredTables.length === 0 && (
                                 <div className="text-sm text-neutral-500 text-center py-10 border border-dashed border-neutral-800 rounded-lg bg-[#0b0b0b]">
                                     Aucune table trouvée.
                                 </div>
@@ -205,150 +184,57 @@ export default function TableManagerPage() {
 
                     {/* Right: selected table */}
                     <div className="lg:col-span-8 flex flex-col gap-6">
-                        <Card className="border-neutral-800 bg-[#0f0f0f]">
-                            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                <div className="space-y-1">
-                                    <CardTitle className="text-lg">
-                                        {selected.name}
-                                    </CardTitle>
-                                    <div className="text-xs text-neutral-500">
-                                        Dernière modification: {selected.updatedAt}
-                                    </div>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Button size="sm" variant="outline" onClick={copyCreateSql}>
-                                        {copied ? (
-                                            <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-400" />
-                                        ) : (
-                                            <Copy className="w-4 h-4 mr-2" />
-                                        )}
-                                        Copier DDL
-                                    </Button>
-                                    <Button size="sm" variant="outline">
-                                        <Pencil className="w-4 h-4 mr-2" />
-                                        Modifier le schéma
-                                    </Button>
-                                    <Button size="sm" variant="outline">
-                                        <Filter className="w-4 h-4 mr-2" />
-                                        Filtres
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="text-red-400 hover:text-red-300"
-                                    >
-                                        <Trash2 className="w-4 h-4 mr-2" />
-                                        Supprimer
-                                    </Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="gap-6">
-                                {/* Columns */}
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2 text-sm font-medium text-neutral-200">
-                                            <Columns3 className="w-4 h-4 text-neutral-400" />
-                                            Colonnes
+                        {selected ? (
+                            <Card className="border-neutral-800 bg-[#0f0f0f]">
+                                <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div className="space-y-1">
+                                        <CardTitle className="text-lg">
+                                            {selected.table_name}
+                                        </CardTitle>
+                                        <div className="text-xs text-neutral-500">
+                                            {selected.table_type} • {selected.size_pretty} • ~{Number(selected.row_estimate).toLocaleString()} lignes
                                         </div>
-                                        <Badge variant="secondary">
-                                            {selected.columns.length}
-                                        </Badge>
                                     </div>
-
-                                    <div className="overflow-hidden rounded-lg border border-neutral-800 bg-[#0b0b0b]">
-                                        <table className="min-w-full text-sm">
-                                            <thead className="bg-[#111] border-b border-neutral-800">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400">
-                                                        Nom
-                                                    </th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400">
-                                                        Type
-                                                    </th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-neutral-400">
-                                                        Contraintes
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {selected.columns.map((c) => (
-                                                    <tr
-                                                        key={c.name}
-                                                        className="border-b border-neutral-800 hover:bg-neutral-900/40"
-                                                    >
-                                                        <td className="px-4 py-2 font-mono text-neutral-200">
-                                                            {c.name}
-                                                        </td>
-                                                        <td className="px-4 py-2 text-neutral-300">
-                                                            {c.type}
-                                                        </td>
-                                                        <td className="px-4 py-2">
-                                                            <div className="flex gap-2">
-                                                                {c.pk && (
-                                                                    <Badge className="bg-indigo-600 text-white">
-                                                                        PK
-                                                                    </Badge>
-                                                                )}
-                                                                {c.nullable === false && (
-                                                                    <Badge variant="secondary">
-                                                                        NOT NULL
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Button size="sm" variant="outline">
+                                            <Pencil className="w-4 h-4 mr-2" />
+                                            Modifier le schéma
+                                        </Button>
+                                        <Button size="sm" variant="outline">
+                                            <Filter className="w-4 h-4 mr-2" />
+                                            Filtres
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="text-red-400 hover:text-red-300"
+                                        >
+                                            <Trash2 className="w-4 h-4 mr-2" />
+                                            Supprimer
+                                        </Button>
                                     </div>
-                                </div>
-
-                                {/* Rows */}
-                                <div className="space-y-3">
-                                    <div className="flex items-center justify-between">
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-3">
                                         <div className="flex items-center gap-2 text-sm font-medium text-neutral-200">
                                             <Rows3 className="w-4 h-4 text-neutral-400" />
-                                            Lignes (aperçu)
+                                            Aperçu des données
                                         </div>
-                                        <Badge variant="secondary">{rows.length}</Badge>
+                                        <div className="rounded-lg border border-dashed border-neutral-800 bg-[#0b0b0b] p-8 text-sm text-neutral-500 text-center">
+                                            Sélectionnez "Filtres" pour parcourir les données de cette table.
+                                        </div>
                                     </div>
-
-                                    <div className="overflow-auto rounded-lg border border-neutral-800 bg-[#0b0b0b]">
-                                        <table className="min-w-full text-sm">
-                                            <thead className="sticky top-0 bg-[#111] border-b border-neutral-800">
-                                                <tr>
-                                                    {selected.columns.map((c) => (
-                                                        <th
-                                                            key={c.name}
-                                                            className="px-4 py-3 text-left text-xs font-medium text-neutral-400"
-                                                        >
-                                                            {c.name}
-                                                        </th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {rows.map((r, idx) => (
-                                                    <tr
-                                                        key={idx}
-                                                        className="border-b border-neutral-800 hover:bg-neutral-900/40"
-                                                    >
-                                                        {selected.columns.map((c) => (
-                                                            <td
-                                                                key={c.name}
-                                                                className="px-4 py-2 text-neutral-200"
-                                                            >
-                                                                {String((r as any)[c.name] ?? "")}
-                                                            </td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            !loading && (
+                                <Card className="border-neutral-800 bg-[#0f0f0f]">
+                                    <CardContent className="flex items-center justify-center py-20 text-sm text-neutral-500">
+                                        Sélectionnez une table pour voir ses détails.
+                                    </CardContent>
+                                </Card>
+                            )
+                        )}
                     </div>
                 </div>
             </div>
@@ -397,7 +283,7 @@ export default function TableManagerPage() {
             )}
 
             {/* Insert row modal (UI only) */}
-            {showInsert && (
+            {showInsert && selected && (
                 <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
                     <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-[#111]">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-800">
@@ -405,7 +291,7 @@ export default function TableManagerPage() {
                                 <div className="text-lg font-semibold">Insérer une ligne</div>
                                 <div className="text-sm text-neutral-400">
                                     Table:{" "}
-                                    <span className="text-neutral-200 font-medium">{selected.name}</span>
+                                    <span className="text-neutral-200 font-medium">{selected.table_name}</span>
                                 </div>
                             </div>
                             <button
@@ -417,7 +303,7 @@ export default function TableManagerPage() {
                         </div>
                         <div className="px-6 py-5 space-y-4">
                             <div className="rounded-lg border border-neutral-800 bg-[#0b0b0b] p-4 text-sm text-neutral-500">
-                                Formulaire dynamique selon colonnes (UI seulement pour l’instant).
+                                Formulaire dynamique selon colonnes (UI seulement pour l'instant).
                             </div>
                         </div>
                         <div className="px-6 py-4 border-t border-neutral-800 flex justify-end gap-2">
@@ -432,4 +318,3 @@ export default function TableManagerPage() {
         </DashboardLayout>
     );
 }
-
