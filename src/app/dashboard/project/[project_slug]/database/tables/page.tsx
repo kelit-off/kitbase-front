@@ -50,7 +50,8 @@ export default function TableManagerPage() {
         setError(null);
         try {
             const response = await api().get(`/projects/${projectSlug}/tables`);
-            const data: ApiTable[] = response.data;
+            const raw = response.data;
+            const data: ApiTable[] = Array.isArray(raw) ? raw : (raw?.data ?? raw?.tables ?? []);
             setTables(data);
             if (data.length > 0 && !selected) {
                 setSelected(data[0]);
