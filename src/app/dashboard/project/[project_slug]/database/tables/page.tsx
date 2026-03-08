@@ -49,7 +49,7 @@ export default function TableManagerPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await api().get(`/projects/${projectSlug}/tables`);
+            const response = await api().get(`/v1/projects/${projectSlug}/tables`);
             const raw = response.data;
             const data: ApiTable[] = Array.isArray(raw) ? raw : (raw?.data ?? raw?.tables ?? []);
             setTables(data);
